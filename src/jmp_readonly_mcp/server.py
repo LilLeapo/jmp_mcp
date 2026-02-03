@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Dict
+from typing import Any, Dict
 
 from mcp.server.fastmcp import FastMCP
 

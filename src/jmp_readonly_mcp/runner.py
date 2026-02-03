@@ -22,11 +22,34 @@ def _temp_root() -> Path:
     return Path(root)
 
 
-def _render_jsl(template_text: str, input_path: Path, output_path: Path) -> str:
+def _render_jsl(
+    template_text: str, input_path: Path, input_jsl_path: Path, output_path: Path
+) -> str:
     return (
         template_text.replace("{{INPUT_PATH}}", _escape_jsl_string(str(input_path)))
+        .replace("{{INPUT_JSL_PATH}}", _escape_jsl_string(str(input_jsl_path)))
         .replace("{{OUTPUT_PATH}}", _escape_jsl_string(str(output_path)))
     )
+
+
+def _render_input_jsl(action: str, file_path: str, params: Dict[str, Any]) -> str:
+    lines = [
+        "Names Default To Here(1);",
+        f'action = "{_escape_jsl_string(action)}";',
+        f'filePath = "{_escape_jsl_string(file_path)}";',
+        "params = Associative Array();",
+    ]
+    for key, value in params.items():
+        if value is None:
+            continue
+        if isinstance(value, str):
+            literal = f"\"{_escape_jsl_string(value)}\""
+        elif isinstance(value, bool):
+            literal = "1" if value else "0"
+        else:
+            literal = str(value)
+        lines.append(f'params["{_escape_jsl_string(str(key))}"] = {literal};')
+    return "\n".join(lines) + "\n"
 
 
 def _execute_jmp(
@@ -60,6 +83,7 @@ def run_jmp(action: str, file_path: str, params: Dict[str, Any]) -> Dict[str, An
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     input_path = run_dir / "input.json"
+    input_jsl_path = run_dir / "input.jsl"
     output_path = run_dir / "output.json"
     job_path = run_dir / "job.jsl"
     stdout_path = logs_dir / "stdout.txt"
@@ -67,10 +91,14 @@ def run_jmp(action: str, file_path: str, params: Dict[str, Any]) -> Dict[str, An
 
     payload = {"action": action, "filePath": file_path, "params": params}
     input_path.write_text(json.dumps(payload), encoding="utf-8")
+    input_jsl_path.write_text(_render_input_jsl(action, file_path, params), encoding="utf-8")
 
     template_path = Path(__file__).resolve().parents[2] / "templates" / "runner_readonly.jsl"
     template_text = template_path.read_text(encoding="utf-8")
-    job_path.write_text(_render_jsl(template_text, input_path, output_path), encoding="utf-8")
+    job_path.write_text(
+        _render_jsl(template_text, input_path, input_jsl_path, output_path),
+        encoding="utf-8",
+    )
 
     try:
         result = _execute_jmp(exe_path, job_path, timeout_sec, stdout_path, stderr_path)

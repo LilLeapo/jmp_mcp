@@ -5,14 +5,12 @@
 Names Default To Here(1);
 
 inputPath = "{{INPUT_PATH}}";
+inputJslPath = "{{INPUT_JSL_PATH}}";
 outputPath = "{{OUTPUT_PATH}}";
 
 try(
-    cfgText = Load Text File(inputPath);
-    cfg = JSON To JSL(cfgText);
-    action = cfg["action"];
-    filePath = cfg["filePath"];
-    params = cfg["params"];
+    // Prefer input.jsl (more compatible than JSON parsing across JMP versions).
+    Include(inputJslPath);
 
     dt = Open(filePath, Invisible);
     nRows = N Rows(dt);
