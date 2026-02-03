@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Dict
 
 from mcp.server.fastmcp import FastMCP
 
@@ -45,9 +45,12 @@ def _error_response(error: MCPError) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def tables_list(**kwargs: Any) -> Dict[str, Any]:
+def tables_list(path: str, extensions: list[str] | None = None) -> Dict[str, Any]:
     try:
-        payload = validate_payload(TABLES_LIST_SCHEMA, kwargs)
+        payload: Dict[str, Any] = {"path": path}
+        if extensions is not None:
+            payload["extensions"] = extensions
+        payload = validate_payload(TABLES_LIST_SCHEMA, payload)
         result = read_tables_list(payload["path"], payload["extensions"])
         return _json_response(result)
     except MCPError as err:
@@ -59,9 +62,12 @@ def tables_list(**kwargs: Any) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def table_schema(**kwargs: Any) -> Dict[str, Any]:
+def table_schema(tableId: str, maxColumns: int | None = None) -> Dict[str, Any]:
     try:
-        payload = validate_payload(TABLE_SCHEMA_SCHEMA, kwargs)
+        payload: Dict[str, Any] = {"tableId": tableId}
+        if maxColumns is not None:
+            payload["maxColumns"] = maxColumns
+        payload = validate_payload(TABLE_SCHEMA_SCHEMA, payload)
         result = read_table_schema(payload["tableId"], payload["maxColumns"])
         return _json_response(result)
     except MCPError as err:
@@ -73,9 +79,21 @@ def table_schema(**kwargs: Any) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def table_preview(**kwargs: Any) -> Dict[str, Any]:
+def table_preview(
+    tableId: str,
+    rows: int | None = None,
+    method: str | None = None,
+    seed: int | None = None,
+) -> Dict[str, Any]:
     try:
-        payload = validate_payload(TABLE_PREVIEW_SCHEMA, kwargs)
+        payload: Dict[str, Any] = {"tableId": tableId}
+        if rows is not None:
+            payload["rows"] = rows
+        if method is not None:
+            payload["method"] = method
+        if seed is not None:
+            payload["seed"] = seed
+        payload = validate_payload(TABLE_PREVIEW_SCHEMA, payload)
         result = read_table_preview(
             payload["tableId"],
             payload["rows"],
