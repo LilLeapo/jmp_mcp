@@ -1,0 +1,29 @@
+[project]
+name = "jmp-readonly-mcp"
+version = "0.1.0"
+description = "Read-only MCP server for JMP (.jmp) and CSV files"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Your Team" }]
+dependencies = [
+  "mcp>=1.0.0",
+  "pandas>=2.0.0",
+  "jsonschema>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0"]
+
+[project.scripts]
+jmp-readonly-mcp = "jmp_readonly_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"

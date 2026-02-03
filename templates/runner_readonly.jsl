@@ -1,0 +1,103 @@
+// runner_readonly.jsl
+// Input: input.json
+// Output: output.json
+
+Names Default To Here(1);
+
+inputPath = "{{INPUT_PATH}}";
+outputPath = "{{OUTPUT_PATH}}";
+
+try(
+    cfgText = Load Text File(inputPath);
+    cfg = JSON To JSL(cfgText);
+    action = cfg["action"];
+    filePath = cfg["filePath"];
+    params = cfg["params"];
+
+    dt = Open(filePath, Invisible);
+    nRows = N Rows(dt);
+    nCols = N Cols(dt);
+
+    If(action == "schema",
+        colNames = dt << Get Column Names(String);
+        columns = {};
+        For(i = 1, i <= N Items(colNames), i++,
+            colName = colNames[i];
+            col = Column(dt, colName);
+            dtType = col << Get Data Type;
+            normType = "unknown";
+            If(dtType == "Numeric", normType = "numeric",
+                dtType == "Character", normType = "character",
+                dtType == "Row State", normType = "unknown"
+            );
+            missing = Col N Missing(col);
+            missingRate = If(nRows > 0, missing / nRows, 0);
+            colInfo = Associative Array();
+            colInfo["name"] = colName;
+            colInfo["type"] = normType;
+            colInfo["missingRate"] = missingRate;
+            colInfo["nUnique"] = .;
+            Insert Into(columns, colInfo);
+        );
+        result = Associative Array();
+        result["rows"] = nRows;
+        result["cols"] = nCols;
+        result["columns"] = columns;
+        result["limits"] = Associative Array();
+        result["limits"]["nUniqueMayBeNull"] = 1;
+        jsonText = As JSON Expr(result);
+        Save Text File(outputPath, jsonText);
+    ,
+    action == "preview",
+        rowsReq = params["rows"];
+        method = params["method"];
+        seed = params["seed"];
+        rowsAvail = nRows;
+        rowsTake = rowsReq;
+        If(rowsTake > rowsAvail, rowsTake = rowsAvail);
+
+        idx = {};
+        If(rowsTake <= 0,
+            idx = {};
+        ,
+            If(method == "head",
+                For(i = 1, i <= rowsTake, i++, Insert Into(idx, i));
+            ,
+                Random Reset(seed);
+                idx = Random Index(rowsAvail, rowsTake);
+            );
+        );
+
+        colNames = dt << Get Column Names(String);
+        data = {};
+        For(j = 1, j <= N Items(idx), j++,
+            rowIndex = idx[j];
+            rowAssoc = Associative Array();
+            For(i = 1, i <= N Items(colNames), i++,
+                colName = colNames[i];
+                col = Column(dt, colName);
+                rowAssoc[colName] = col[rowIndex];
+            );
+            Insert Into(data, rowAssoc);
+        );
+
+        result = Associative Array();
+        result["rowsRequested"] = rowsReq;
+        result["rowsReturned"] = N Items(idx);
+        result["data"] = data;
+        result["truncated"] = If(rowsReq > rowsAvail, 1, 0);
+        jsonText = As JSON Expr(result);
+        Save Text File(outputPath, jsonText);
+    ,
+        Throw("UNKNOWN_ACTION")
+    );
+,
+    e,
+    err = Associative Array();
+    err["error"] = Associative Array();
+    err["error"]["code"] = "JSL_ERROR";
+    err["error"]["message"] = Char(e);
+    err["error"]["details"] = Associative Array();
+    jsonText = As JSON Expr(err);
+    Save Text File(outputPath, jsonText);
+);

@@ -1,0 +1,6 @@
+{
+  "tableId": "file:C:\\data\\demo.jmp",
+  "rows": 200,
+  "method": "random",
+  "seed": 42
+}
